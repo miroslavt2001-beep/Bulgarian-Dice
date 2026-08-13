@@ -1,0 +1,4516 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Bulgarian Dice</title>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js">
+function toggleWheelMode(){
+
+    const wheelMode = document.getElementById("wheelMode");
+    if(!wheelMode) return;
+
+    const visible = wheelMode.style.display !== "none";
+
+    wheelMode.style.display = visible ? "none" : "block";
+
+    const dice = document.getElementById("diceContainer");
+    const roll = document.getElementById("rollButton");
+    const status = document.getElementById("modeStatus");
+    const histories = document.querySelector(".histories");
+
+    if(dice) dice.style.display = visible ? "" : "none";
+    if(roll) roll.style.display = visible ? "" : "none";
+    if(status) status.style.display = visible ? "" : "none";
+    if(histories) histories.style.display = visible ? "" : "none";
+}
+
+function updateWheelLabels(){
+
+    const labels = Array.from(
+        document.querySelectorAll(".wheelLabel")
+    );
+
+    labels.forEach((label,index)=>{
+        const angle = index * 60 + 30;
+        label.style.transform =
+            "rotate(" + angle + "deg) translateY(-92px) rotate(-" + angle + "deg)";
+    });
+}
+
+function spinWheel(){
+
+    const wheel = document.getElementById("wheel");
+    const result = document.getElementById("wheelResult");
+    const labels = Array.from(document.querySelectorAll(".wheelLabel"));
+    const button = document.getElementById("spinWheelButton");
+
+    if(!wheel || !result || !labels.length || !button) return;
+    if(button.disabled) return;
+
+    button.disabled = true;
+    result.textContent = "";
+
+    // Избираме произволен сектор.
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    const pickedIndex = bytes[0] % labels.length;
+    const picked = (labels[pickedIndex].value || "").trim()
+        || ("СЕКТОР " + (pickedIndex + 1));
+
+    // Запазваме текущия ъгъл, за да продължава да се върти,
+    // вместо всяко завъртане да започва от началната позиция.
+    const currentAngle = Number(wheel.dataset.rotation || 0);
+
+    // Центърът на избрания сектор трябва да попадне точно под стрелката.
+    const sectorSize = 360 / labels.length;
+    const sectorCenter = pickedIndex * sectorSize + sectorSize / 2;
+
+    // 5–7 пълни оборота + позициониране на избрания сектор.
+    const extraTurns = 5 + Math.floor(Math.random() * 3);
+    const targetAngle = currentAngle
+        + extraTurns * 360
+        + (360 - sectorCenter - (currentAngle % 360) + 360) % 360;
+
+    wheel.style.transition = "transform 3.2s cubic-bezier(.12,.72,.16,1)";
+    wheel.style.transform = "rotate(" + targetAngle + "deg)";
+    wheel.dataset.rotation = targetAngle;
+
+    setTimeout(()=>{
+        result.textContent = "🎯 " + picked;
+        button.disabled = false;
+    }, 3250);
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+    updateWheelLabels();
+
+    document.querySelectorAll(".wheelLabel").forEach(input=>{
+        input.addEventListener("click", event=>event.stopPropagation());
+        input.addEventListener("input", updateWheelLabels);
+    });
+});</script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+html,body{
+    margin:0;
+    min-height:100%;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+
+    font-family:Arial,sans-serif;
+
+    overflow:auto;
+
+    padding:30px 0 120px;
+
+    position:relative;
+
+    color:white;
+
+    transition:background .6s ease;
+
+    background:
+        linear-gradient(
+            rgba(0,0,0,.45),
+            rgba(0,0,0,.65)
+        ),
+        linear-gradient(
+            135deg,
+            #193b66,
+            #0b1728 45%,
+            #142f4b
+        );
+}
+
+body::before{
+    content:"";
+
+    position:fixed;
+    inset:0;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(0,180,255,.12),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 80% 70%,
+            rgba(180,0,255,.10),
+            transparent 30%
+        );
+
+    pointer-events:none;
+    z-index:0;
+}
+
+/* TITLE */
+
+h1{
+    color:white;
+
+    font-size:60px;
+    text-align:center;
+
+    margin:0 0 25px;
+
+    letter-spacing:3px;
+
+    position:relative;
+    z-index:2;
+
+    text-shadow:
+        0 0 10px rgba(0,200,255,.9),
+        0 0 25px rgba(0,120,255,.6),
+        0 0 45px rgba(150,0,255,.5),
+        0 5px 15px black;
+}
+
+/* BACKGROUND */
+
+#topActionButtons{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+#coinTopButton{
+    border:none;
+    padding:13px 25px;
+    border-radius:14px;
+    font-size:18px;
+    font-weight:bold;
+    color:white;
+    cursor:pointer;
+    background:linear-gradient(135deg,rgba(125,75,0,.98),rgba(255,170,0,.98));
+    border:1px solid rgba(255,220,120,.45);
+    box-shadow:0 8px 25px rgba(0,0,0,.5),0 0 20px rgba(255,170,0,.2);
+    transition:.25s;
+    backdrop-filter:blur(10px);
+}
+
+#coinTopButton:hover{
+    transform:translateY(-2px) scale(1.03);
+}
+
+#statsTopButton{
+    width:44px;
+    height:44px;
+    padding:0;
+    border:none;
+    border-radius:50%;
+    cursor:pointer;
+    color:white;
+    font-size:21px;
+    font-weight:900;
+    background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:0 8px 25px rgba(0,0,0,.45),0 0 18px rgba(0,180,255,.14);
+    transition:.2s;
+    backdrop-filter:blur(10px);
+}
+#statsTopButton:hover{
+    transform:translateY(-2px) scale(1.08);
+    background:rgba(255,255,255,.17);
+}
+
+#statisticsModal{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.58);
+    backdrop-filter:blur(7px);
+    z-index:20000;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:.2s;
+}
+#statisticsModal.open{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+}
+#statisticsCard{
+    width:min(460px,94vw);
+    padding:22px;
+    border-radius:20px;
+    background:linear-gradient(135deg,rgba(5,10,25,.98),rgba(25,10,45,.98));
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 25px 80px rgba(0,0,0,.75),0 0 35px rgba(0,150,255,.18);
+}
+#statisticsHeader{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
+}
+#statisticsHeader h2{
+    margin:0;
+    font-size:22px;
+}
+#statisticsClose{
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:18px;
+    font-weight:bold;
+}
+#statisticsSummary{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:16px;
+}
+.statBox{
+    padding:12px;
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08);
+    text-align:center;
+}
+.statBox small{
+    display:block;
+    color:#aaa;
+    font-size:11px;
+    margin-bottom:5px;
+}
+.statBox strong{
+    font-size:20px;
+}
+#statisticsColors{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.statColorRow{
+    display:grid;
+    grid-template-columns:110px 1fr 58px;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:rgba(255,255,255,.055);
+}
+.statColorName{
+    font-weight:bold;
+    font-size:13px;
+}
+.statBar{
+    height:9px;
+    border-radius:20px;
+    background:rgba(255,255,255,.08);
+    overflow:hidden;
+}
+.statBarFill{
+    height:100%;
+    border-radius:20px;
+}
+.statPercent{
+    text-align:right;
+    font-weight:900;
+    font-size:13px;
+}
+#mostCommonColor{
+    margin-top:12px;
+    padding:11px;
+    border-radius:11px;
+    text-align:center;
+    font-weight:900;
+    background:rgba(255,215,0,.10);
+    border:1px solid rgba(255,215,0,.22);
+}
+@media(max-width:600px){
+    #statsTopButton{width:40px;height:40px;font-size:19px}
+    #statisticsCard{padding:17px}
+    .statColorRow{grid-template-columns:92px 1fr 52px}
+}
+
+#backgroundWrapper{
+    position:relative;
+    z-index:20;
+
+    margin-bottom:18px;
+}
+
+#backgroundButton{
+    border:none;
+
+    padding:13px 25px;
+
+    border-radius:14px;
+
+    font-size:18px;
+    font-weight:bold;
+
+    color:white;
+
+    cursor:pointer;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(20,30,55,.95),
+            rgba(50,20,80,.95)
+        );
+
+    border:1px solid rgba(255,255,255,.18);
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.5),
+        0 0 20px rgba(100,0,255,.2);
+
+    transition:.25s;
+
+    backdrop-filter:blur(10px);
+}
+
+#backgroundButton:hover{
+    transform:translateY(-2px) scale(1.03);
+}
+
+#backgroundMenu{
+    position:absolute;
+
+    top:calc(100% + 10px);
+    left:50%;
+
+    transform:
+        translateX(-50%)
+        scale(.95);
+
+    width:285px;
+    max-width:90vw;
+
+    padding:12px;
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:8px;
+
+    background:rgba(5,8,20,.95);
+
+    border:1px solid rgba(255,255,255,.15);
+
+    border-radius:18px;
+
+    box-shadow:
+        0 15px 50px rgba(0,0,0,.7),
+        0 0 35px rgba(60,0,180,.25);
+
+    backdrop-filter:blur(15px);
+
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+
+    transition:.2s;
+}
+
+#backgroundMenu.open{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+
+    transform:
+        translateX(-50%)
+        scale(1);
+}
+
+.bgOption{
+    min-height:70px;
+
+    border:none;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:13px;
+    font-weight:bold;
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+
+    text-align:center;
+
+    padding:8px;
+
+    transition:.2s;
+
+    background:rgba(255,255,255,.08);
+
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.bgOption:hover{
+    transform:translateY(-3px) scale(1.03);
+
+    background:rgba(255,255,255,.17);
+}
+
+.bgOption.active{
+    background:
+        linear-gradient(
+            135deg,
+            #ffe66d,
+            #ff9900
+        );
+
+    color:#222;
+
+    border-color:#ffd700;
+
+    box-shadow:
+        0 0 20px rgba(255,200,0,.5);
+}
+
+/* CONNECTION */
+
+#connectionBox{
+    --connection-alpha:.12;
+    --connection-blur:10px;
+    position:relative;
+    z-index:10;
+
+    width:650px;
+    max-width:92vw;
+
+    margin:5px 0 25px;
+
+    padding:18px;
+
+    border-radius:16px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(5,10,25,var(--connection-alpha)),
+            rgba(25,10,45,var(--connection-alpha))
+        );
+
+    border:1px solid rgba(255,255,255,.12);
+
+    box-shadow:
+        0 10px 30px rgba(0,0,0,.20),
+        0 0 25px rgba(0,120,255,.06);
+
+    backdrop-filter:blur(var(--connection-blur));
+    -webkit-backdrop-filter:blur(var(--connection-blur));
+}
+
+#connectionTransparencyControl{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin:2px auto 14px;
+    max-width:340px;
+}
+
+#connectionTransparencyControl span{
+    font-size:12px;
+    color:rgba(255,255,255,.72);
+    user-select:none;
+}
+
+#connectionTransparencySlider{
+    flex:1;
+    min-width:150px;
+    height:5px;
+    accent-color:#7c3cff;
+    cursor:pointer;
+}
+
+#connectionTitle{
+    text-align:center;
+
+    font-size:18px;
+    font-weight:bold;
+
+    margin-bottom:13px;
+}
+
+#connectionRow{
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    gap:10px;
+
+    flex-wrap:wrap;
+}
+
+#roomCode{
+    min-width:150px;
+
+    padding:12px 18px;
+
+    border-radius:10px;
+
+    background:transparent;
+
+    border:1px solid rgba(255,255,255,.22);
+
+    color:#000;
+
+    font-size:22px;
+    font-weight:bold;
+
+    letter-spacing:4px;
+
+    text-align:center;
+
+    user-select:all;
+
+    cursor:pointer;
+
+    text-shadow:none;
+}
+
+#newCodeButton,
+#verifyButton{
+    padding:12px 18px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:15px;
+    font-weight:bold;
+
+    transition:.2s;
+}
+
+#newCodeButton{
+    background:
+        linear-gradient(
+            135deg,
+            #008cff,
+            #7b00ff
+        );
+
+    box-shadow:
+        0 5px 15px rgba(0,0,0,.4);
+}
+
+#verifyButton{
+    background:
+        linear-gradient(
+            135deg,
+            #008cff,
+            #7b00ff
+        );
+
+    box-shadow:
+        0 5px 15px rgba(0,0,0,.4);
+}
+
+#newCodeButton:hover,
+#verifyButton:hover{
+    transform:scale(1.04);
+}
+
+#newCodeButton:disabled,
+#verifyButton:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+    transform:none;
+}
+
+#verifyInput{
+    width:180px;
+
+    padding:12px 14px;
+
+    border-radius:10px;
+
+    border:1px solid rgba(255,255,255,.2);
+
+    outline:none;
+
+    background:transparent;
+
+    color:#000;
+
+    font-size:17px;
+    font-weight:bold;
+
+    text-align:center;
+
+    text-transform:uppercase;
+
+    letter-spacing:3px;
+}
+
+#verifyInput::placeholder{
+    color:#000;
+
+    letter-spacing:1px;
+}
+
+#verifyInput:focus{
+    border-color:#00cfff;
+
+    box-shadow:
+        0 0 15px rgba(0,200,255,.25);
+}
+
+#connectionMessage{
+    min-height:22px;
+
+    margin-top:12px;
+
+    text-align:center;
+
+    font-size:14px;
+    font-weight:bold;
+}
+
+.success{
+    color:#00ff66;
+
+    text-shadow:
+        0 0 8px rgba(0,255,100,.5);
+}
+
+.error{
+    color:#ff4d4d;
+
+    text-shadow:
+        0 0 8px rgba(255,0,0,.4);
+}
+
+.info{
+    color:#66ddff;
+}
+
+/* CONNECTIONS */
+
+#connectionsList{
+    margin-top:15px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:4px;
+}
+
+.connectionItem{
+    display:flex;
+
+    align-items:center;
+    justify-content:space-between;
+
+    gap:10px;
+
+    padding:9px 12px;
+
+    border-radius:10px;
+
+    background:rgba(255,255,255,.06);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    font-size:13px;
+}
+
+.connectionOnline{
+    color:#00ff66;
+    font-weight:bold;
+}
+
+.connectionCode{
+    color:#66ddff;
+
+    font-weight:bold;
+
+    letter-spacing:2px;
+}
+
+/* DICE */
+
+#diceContainer{
+    display:flex;
+
+    gap:30px;
+
+    margin-bottom:40px;
+
+    position:relative;
+
+    z-index:2;
+}
+
+.dice{
+    width:90px;
+    height:90px;
+
+    border-radius:20px;
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+
+    background:#777;
+
+    box-shadow:
+        inset -10px -10px 20px rgba(0,0,0,.3),
+        inset 10px 10px 20px rgba(255,255,255,.3),
+        0 10px 30px rgba(0,0,0,.7),
+        0 0 15px rgba(255,255,255,.08);
+
+    position:relative;
+}
+
+.dice::after{
+    content:"";
+
+    width:22px;
+    height:22px;
+
+    border-radius:50%;
+
+    background:white;
+
+    box-shadow:
+        0 0 10px rgba(255,255,255,.8);
+}
+
+/* ROLL */
+
+#rollButton{
+    padding:20px 50px;
+
+    font-size:35px;
+
+    border:none;
+
+    border-radius:20px;
+
+    cursor:pointer;
+
+    background:linear-gradient(135deg,rgba(125,75,0,.98),rgba(255,170,0,.98));
+
+    color:#222;
+
+    font-weight:bold;
+
+    box-shadow:
+        0 8px 20px rgba(0,0,0,.7),
+        0 0 20px rgba(255,190,0,.25);
+
+    transition:.2s;
+
+    position:relative;
+
+    z-index:2;
+}
+
+#rollButton:hover:not(:disabled){
+    transform:scale(1.05);
+
+    box-shadow:
+        0 10px 25px rgba(0,0,0,.8),
+        0 0 30px rgba(255,170,0,.45);
+}
+
+#rollButton:disabled{
+    cursor:not-allowed;
+    opacity:.45;
+}
+
+/* STATUS */
+
+#modeStatus{
+    position:relative;
+
+    z-index:2;
+
+    margin-top:15px;
+
+    padding:8px 15px;
+
+    border-radius:10px;
+
+    background:rgba(0,0,0,.35);
+
+    font-weight:bold;
+
+    font-size:14px;
+}
+
+/* HISTORY WRAPPER */
+
+.histories{
+    display:flex;
+
+    justify-content:center;
+
+    align-items:flex-start;
+
+    gap:20px;
+
+    width:100%;
+
+    max-width:1250px;
+
+    margin-top:30px;
+
+    position:relative;
+
+    z-index:2;
+}
+
+/* HISTORY */
+
+.history{
+    width:600px;
+    max-width:90vw;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(5,15,20,.90),
+            rgba(15,20,25,.90)
+        );
+
+    border-radius:15px;
+
+    padding:20px;
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.7),
+        0 0 30px rgba(0,100,180,.15);
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
+    backdrop-filter:blur(8px);
+}
+
+.historyTitle{
+    color:white;
+
+    text-align:center;
+
+    font-size:23px;
+
+    font-weight:bold;
+
+    margin-bottom:15px;
+}
+
+.friendTitle{
+    color:#66ddff;
+}
+
+#colorCounter{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    margin:0 0 12px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.07);
+}
+
+.colorCount{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 8px;
+    border-radius:8px;
+    background:rgba(0,0,0,.18);
+    color:white;
+    font-size:14px;
+    font-weight:bold;
+}
+
+.totalRollCounter{
+    text-align:center;
+    color:white;
+    font-size:15px;
+    font-weight:900;
+    margin:0 0 8px;
+    padding:6px 10px;
+    border-radius:8px;
+    background:rgba(0,0,0,.18);
+}
+
+.colorCountDot{
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    box-shadow:0 0 7px currentColor;
+}
+
+#streakRecords{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    margin:0 0 10px;
+    padding:7px 8px;
+    border-radius:9px;
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.06);
+}
+.streakRecord{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 7px;
+    border-radius:7px;
+    background:rgba(0,0,0,.20);
+    color:white;
+    font-size:12px;
+    font-weight:900;
+    white-space:nowrap;
+}
+.streakRecordDot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    box-shadow:0 0 6px currentColor;
+}
+.streakRecordValue{
+    font-size:13px;
+}
+
+#historyList,
+.friendHistoryList{
+    display:flex;
+
+    flex-direction:column;
+
+    gap:8px;
+
+    max-height:500px;
+
+    overflow-y:auto;
+
+    padding-right:5px;
+}
+
+.historyRow{
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    background:rgba(255,255,255,.08);
+
+    border-radius:10px;
+
+    padding:9px 12px;
+
+    color:white;
+
+    border:
+        1px solid rgba(255,255,255,.06);
+}
+
+.rollNumber{
+    width:55px;
+
+    color:#aaa;
+
+    font-weight:bold;
+
+    font-size:16px;
+}
+
+.historyDice{
+    width:32px;
+    height:32px;
+
+    border-radius:8px;
+
+    box-shadow:
+        inset -4px -4px 8px rgba(0,0,0,.3),
+        inset 4px 4px 8px rgba(255,255,255,.25),
+        0 3px 8px rgba(0,0,0,.5);
+
+    position:relative;
+}
+
+.historyDice::after{
+    content:"";
+
+    position:absolute;
+
+    width:9px;
+    height:9px;
+
+    border-radius:50%;
+
+    background:white;
+
+    top:50%;
+    left:50%;
+
+    transform:
+        translate(-50%,-50%);
+
+    box-shadow:
+        0 0 5px white;
+}
+
+.historyRow:first-child{
+    background:
+        rgba(255,215,0,.12);
+
+    border:
+        1px solid rgba(255,215,0,.30);
+}
+
+.emptyHistory{
+    text-align:center;
+
+    padding:30px 10px;
+
+    color:#777;
+
+    font-size:14px;
+}
+
+/* COLORS */
+
+.yellow{background:#ffd700}
+.orange{background:#ff8800}
+.green{background:#00cc33}
+.red{background:#ff0000}
+.blue{background:#0066ff}
+.purple{background:#a000ff}
+
+/* LEGEND */
+
+#colorText{
+    position:fixed;
+
+    bottom:15px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    background:rgba(3,5,15,.92);
+
+    padding:15px 35px;
+
+    border-radius:12px;
+
+    font-size:28px;
+
+    font-weight:bold;
+
+    text-shadow:0 0 8px black;
+
+    white-space:nowrap;
+
+    display:block;
+
+    z-index:9999;
+
+    box-shadow:
+        0 5px 20px rgba(0,0,0,.6);
+
+    border:
+        1px solid rgba(255,255,255,.10);
+
+    pointer-events:none;
+}
+
+/* SHAKE */
+
+.shake{
+    animation:shake .35s ease;
+}
+
+@keyframes shake{
+
+    0%,100%{
+        transform:translateX(0);
+    }
+
+    25%{
+        transform:translateX(-8px);
+    }
+
+    75%{
+        transform:translateX(8px);
+    }
+}
+
+
+/* F4 CONTROL PANEL */
+#colorEditorPanel{
+    position:fixed;
+    top:120px;
+    left:50%;
+    transform:translateX(-50%);
+    width:330px;
+    max-width:90vw;
+    padding:0 0 14px;
+    border-radius:18px;
+    background:rgba(5,8,20,.97);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 20px 70px rgba(0,0,0,.8),0 0 35px rgba(0,150,255,.2);
+    backdrop-filter:blur(18px);
+    z-index:10000;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+}
+#colorEditorPanel.open{opacity:1;visibility:visible;pointer-events:auto}
+#colorEditorHeader{
+    padding:14px 16px;
+    cursor:move;
+    user-select:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid rgba(255,255,255,.12);
+}
+#colorEditorHeader h2{margin:0;font-size:20px}
+#colorEditorPanel .editorBody{padding:9px 10px 0;text-align:center;color:#aaa;font-size:11px}
+#colorEditorPanel .editorClose{
+    width:100%;margin-top:14px;padding:11px;border:0;border-radius:10px;cursor:pointer;color:white;font-weight:bold;
+    background:linear-gradient(135deg,#008cff,#7b00ff);
+}
+#colorEditorPanel .editorClose:hover{transform:scale(1.02)}
+#colorEditorPanel .dragHint{color:#aaa;margin:0}
+#colorEditorPanel .f4Key{color:#66ddff;font-weight:bold}
+
+#f4PossibleColors{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:6px;
+    padding:2px;
+}
+
+.f4ColorOption{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:7px;
+}
+
+.f4PossibleColor{
+    display:block;
+    width:100%;
+    aspect-ratio:1 / 1;
+    min-height:34px;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:inset 0 0 12px rgba(255,255,255,.10), 0 4px 12px rgba(0,0,0,.35);
+    transition:.2s;
+}
+
+.f4ColorOption.disabled .f4PossibleColor{
+    opacity:.28;
+    filter:grayscale(.8);
+}
+
+.f4ColorButtons{
+    display:flex;
+    width:100%;
+    gap:4px;
+}
+
+.f4ColorButton{
+    flex:1;
+    border:0;
+    border-radius:7px;
+    padding:4px 1px;
+    color:white;
+    font-size:8px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:.15s;
+}
+
+.f4AddColor{
+    background:rgba(0,190,100,.28);
+    border:1px solid rgba(0,255,130,.2);
+}
+
+.f4RemoveColor{
+    background:rgba(255,55,55,.22);
+    border:1px solid rgba(255,80,80,.2);
+}
+
+.f4ColorButton:disabled{
+    opacity:.25;
+    cursor:not-allowed;
+}
+
+.f4ColorButton:not(:disabled):hover{
+    transform:scale(1.03);
+}
+
+.f4SelectionHint{
+    margin:0 0 10px;
+    color:#999;
+    font-size:12px;
+}
+
+#friendHistoryPanel{display:none}
+#friendHistoryPanel.visible{display:block}
+
+/* COIN MODE */
+#coinMode{
+    display:none;
+    width:min(430px,90vw);
+    margin:30px auto;
+    padding:22px;
+    text-align:center;
+    border-radius:20px;
+    background:rgba(5,8,20,.82);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 18px 60px rgba(0,0,0,.55);
+    backdrop-filter:blur(14px);
+}
+#coinMode.active{display:block}
+#coinModeTitle{font-size:20px;font-weight:bold;color:white;margin-bottom:14px}
+#coin{
+    width:150px;height:150px;border-radius:50%;border:0;cursor:pointer;
+    margin:8px auto 15px;position:relative;
+    background:radial-gradient(circle at 35% 30%,#fff3a0,#ffd21f 48%,#d88900 100%);
+    box-shadow:0 12px 35px rgba(0,0,0,.55), inset 0 0 0 8px rgba(255,255,255,.2);
+    font-size:26px;font-weight:900;color:#6b4300;
+}
+#coin.coinFlip{animation:coinFlip .7s ease}
+@keyframes coinFlip{0%{transform:rotateY(0) scale(1)}50%{transform:rotateY(900deg) scale(.92)}100%{transform:rotateY(1800deg) scale(1)}}
+#coinResult{font-size:18px;font-weight:bold;color:white;min-height:25px;margin-bottom:12px}
+#backToDiceButton{border:0;border-radius:10px;padding:10px 16px;cursor:pointer;color:white;font-weight:bold;background:linear-gradient(135deg,#008cff,#7b00ff)}
+#f4CoinButton{width:100%;margin-top:9px;padding:8px;border:0;border-radius:9px;cursor:pointer;color:white;font-weight:bold;font-size:11px;background:linear-gradient(135deg,#b87900,#ff9d00)}
+
+/* MOBILE */
+
+@media(max-width:1000px){
+
+    .histories{
+        flex-direction:column;
+
+        align-items:center;
+    }
+
+}
+
+@media(max-width:700px){
+
+    body{
+        padding:20px 0 110px;
+    }
+
+    h1{
+        font-size:38px;
+
+        margin-bottom:20px;
+
+        letter-spacing:2px;
+    }
+
+    #connectionBox{
+        width:92vw;
+    }
+
+    #connectionRow{
+        gap:7px;
+    }
+
+    #roomCode{
+        min-width:130px;
+
+        font-size:19px;
+    }
+
+    #verifyInput{
+        width:130px;
+
+        font-size:15px;
+    }
+
+    #verifyButton,
+    #newCodeButton{
+        padding:11px 14px;
+
+        font-size:13px;
+    }
+
+    #diceContainer{
+        gap:12px;
+
+        margin-bottom:25px;
+    }
+
+    .dice{
+        width:65px;
+        height:65px;
+
+        border-radius:15px;
+    }
+
+    .dice::after{
+        width:17px;
+        height:17px;
+    }
+
+    #rollButton{
+        font-size:25px;
+
+        padding:15px 35px;
+    }
+
+    .history{
+        width:92vw;
+    }
+
+    #colorText{
+        font-size:18px;
+
+        padding:12px 18px;
+
+        bottom:10px;
+
+        max-width:95vw;
+
+        overflow:hidden;
+
+        text-overflow:ellipsis;
+    }
+
+}
+
+
+/* FIX: compact background controls so everything is clickable */
+#backgroundPanel,
+#backgroundMenu,
+#backgroundControls,
+#bgPanel {
+    box-sizing: border-box;
+    max-width: calc(100vw - 20px);
+}
+
+#backgroundPanel button,
+#backgroundMenu button,
+#backgroundControls button,
+#bgPanel button,
+#backgroundPanel .backgroundButton,
+#backgroundMenu .backgroundButton {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+    #backgroundPanel,
+    #backgroundMenu,
+    #backgroundControls,
+    #bgPanel {
+        width: min(94vw, 430px) !important;
+        padding: 10px !important;
+    }
+
+    #backgroundPanel button,
+    #backgroundMenu button,
+    #backgroundControls button,
+    #bgPanel button {
+        font-size: 11px !important;
+        padding: 8px 6px !important;
+    }
+}
+
+
+/* Short coin flip: blank while spinning, EZI on one side and TURA on the other. */
+#coin{
+    position:relative;
+    overflow:hidden;
+    transform-style:preserve-3d;
+}
+
+#coin .coinFace{
+    display:none !important;
+}
+
+#coinResultOnCoin{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-weight:900;
+    font-size:clamp(18px, 5vw, 32px);
+    letter-spacing:1px;
+    color:transparent;
+    text-shadow:none;
+    pointer-events:none;
+    z-index:5;
+}
+
+#coinResultOnCoin::before,
+#coinResultOnCoin::after{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    backface-visibility:hidden;
+    color:#fff;
+    font-weight:900;
+    font-size:clamp(18px, 5vw, 32px);
+    text-shadow:0 2px 5px rgba(0,0,0,.65);
+}
+
+#coinResultOnCoin::before{
+    content:"ЕЗИ";
+}
+
+#coinResultOnCoin::after{
+    content:"ТУРА";
+    transform:rotateY(180deg);
+}
+
+#coin.flipping{
+    animation:coinFlipFast .7s ease-in-out;
+}
+
+@keyframes coinFlipFast{
+    0%{transform:rotateY(0deg)}
+    20%{transform:rotateY(540deg)}
+    45%{transform:rotateY(1080deg)}
+    70%{transform:rotateY(1620deg)}
+    100%{transform:rotateY(1800deg)}
+}
+    25%{transform:rotateY(540deg)}
+    55%{transform:rotateY(1260deg)}
+    80%{transform:rotateY(1980deg)}
+    100%{transform:rotateY(2160deg)}
+}
+
+#coinResult{
+    display:none !important;
+}
+
+#coinResult{
+    display:none !important;
+}
+
+
+/* Two-sided coin: EZI on one face, TURA on the other */
+#coin{
+    position:relative;
+    transform-style:preserve-3d;
+    perspective:900px;
+    overflow:visible !important;
+}
+
+#coin .coinSide{
+    position:absolute;
+    inset:0;
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    color:#fff;
+    font-weight:900;
+    font-size:clamp(18px,5vw,32px);
+    text-shadow:0 2px 5px rgba(0,0,0,.65);
+    pointer-events:none;
+    z-index:10;
+}
+
+#coin .coinSideFront{
+    transform:translateZ(2px);
+}
+
+#coin .coinSideBack{
+    transform:rotateY(180deg) translateZ(2px);
+}
+
+#coinResultOnCoin{
+    display:none !important;
+}
+
+#coin.flipping{
+    animation:coinTwoSideFast .7s ease-in-out;
+}
+
+@keyframes coinTwoSideFast{
+    0%{transform:rotateY(0deg)}
+    20%{transform:rotateY(540deg)}
+    45%{transform:rotateY(1080deg)}
+    70%{transform:rotateY(1620deg)}
+    100%{transform:rotateY(1800deg)}
+}
+    20%{transform:rotateY(540deg)}
+    45%{transform:rotateY(1080deg)}
+    70%{transform:rotateY(1620deg)}
+    100%{transform:rotateY(1800deg)}
+}
+
+
+/* Compact top controls: coin + wheel */
+#coinButton,
+#coinModeButton,
+#coinToggleButton,
+#statsTopButton,
+button[onclick*="toggleGameMode"],
+button[onclick*="flipCoin"]{
+    width:auto !important;
+    min-width:120px !important;
+    max-width:150px !important;
+    padding:9px 13px !important;
+    white-space:nowrap !important;
+}
+
+#wheelButton{
+    width:auto !important;
+    min-width:120px !important;
+    max-width:150px !important;
+    padding:9px 13px !important;
+    margin-left:6px !important;
+    white-space:nowrap !important;
+    border:0;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:800;
+}
+
+#coinButton + #wheelButton,
+#coinModeButton + #wheelButton,
+#coinToggleButton + #wheelButton{
+    vertical-align:middle;
+}
+
+@media(max-width:600px){
+    #wheelButton,
+    #coinButton,
+    #coinModeButton,
+    #coinToggleButton,
+    button[onclick*="toggleGameMode"],
+    button[onclick*="flipCoin"]{
+        min-width:105px !important;
+        max-width:125px !important;
+        padding:8px 9px !important;
+        font-size:11px !important;
+    }
+}
+
+
+#wheelMode{
+    display:none;
+    text-align:center;
+    margin:18px auto;
+}
+
+#wheelMode.active{display:block}
+
+#wheelModeTitle{
+    font-weight:900;
+    margin-bottom:10px;
+}
+
+#wheelResult{
+    min-height:26px;
+    margin:10px auto;
+    font-size:20px;
+    font-weight:900;
+}
+
+#wheel{
+    position:relative;
+    width:300px;
+    height:300px;
+    margin:0 auto 14px;
+    border-radius:50%;
+    background:conic-gradient(
+        #ff3b30 0deg 60deg,
+        #ffd60a 60deg 120deg,
+        #34c759 120deg 180deg,
+        #0a84ff 180deg 240deg,
+        #af52de 240deg 300deg,
+        #ff9500 300deg 360deg
+    );
+    border:8px solid rgba(255,255,255,.9);
+    box-shadow:0 8px 25px rgba(0,0,0,.35);
+    overflow:hidden;
+}
+
+.wheelLabel{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:76px;
+    height:30px;
+    margin-left:-38px;
+    margin-top:-15px;
+    padding:4px 3px;
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:7px;
+    background:rgba(0,0,0,.22);
+    color:#fff;
+    text-align:center;
+    font-size:13px;
+    font-weight:900;
+    text-shadow:0 2px 4px rgba(0,0,0,.8);
+    outline:none;
+    transform-origin:38px 15px;
+    z-index:3;
+}
+
+.wheelEdit input:focus{
+    border-color:#00cfff;
+    box-shadow:0 0 12px rgba(0,200,255,.25);
+}
+
+@media(max-width:600px){ #wheel{width:260px;height:260px} .wheelLabel{width:68px;margin-left:-34px;font-size:11px} }
+
+.wheelPointer{
+    position:absolute;
+    top:-30px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:5;
+    font-size:28px;
+}
+
+.wheelCenter{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:54px;
+    height:54px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#111;
+    border:3px solid #fff;
+}
+
+
+    to{transform:rotate(1800deg)}
+}
+
+
+/* MUSIC PLAYER */
+#musicWrapper{
+    position:fixed;
+    top:20px;
+    right:20px;
+    z-index:10001;
+}
+#musicButton{
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    padding:12px 18px;
+    color:white;
+    background:linear-gradient(135deg,#7b00ff,#008cff);
+    box-shadow:0 8px 25px rgba(0,0,0,.45);
+    cursor:pointer;
+    font-size:16px;
+    font-weight:bold;
+}
+#musicButton:hover{transform:scale(1.04)}
+#musicPanel{
+    position:absolute;
+    top:52px;
+    right:0;
+    width:310px;
+    max-width:88vw;
+    padding:14px;
+    border-radius:18px;
+    background:rgba(5,8,20,.97);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 20px 60px rgba(0,0,0,.75);
+    backdrop-filter:blur(16px);
+    display:none;
+}
+#musicPanel.open{display:block}
+#musicTitle{
+    text-align:center;
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+.musicSong{
+    width:100%;
+    border:0;
+    border-radius:11px;
+    padding:10px 12px;
+    margin:4px 0;
+    text-align:left;
+    color:white;
+    background:rgba(255,255,255,.08);
+    cursor:pointer;
+    font-size:14px;
+}
+.musicSong:hover{background:rgba(255,255,255,.16)}
+.musicSong.active{
+    background:linear-gradient(135deg,rgba(123,0,255,.75),rgba(0,140,255,.75));
+}
+#musicStatus{
+    color:#aaa;
+    text-align:center;
+    font-size:12px;
+    margin:9px 0;
+}
+#musicControls{
+    display:flex;
+    gap:7px;
+    align-items:center;
+    margin-top:8px;
+}
+#musicControls button{
+    flex:1;
+    border:0;
+    border-radius:9px;
+    padding:8px;
+    cursor:pointer;
+    color:white;
+    background:rgba(255,255,255,.10);
+}
+#musicControls button:hover{background:rgba(255,255,255,.18)}
+#musicFile{
+    width:100%;
+    margin-top:9px;
+    font-size:11px;
+    color:#aaa;
+}
+
+
+/* PROFILE LOGIN */
+#profileLoginOverlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);padding:20px;box-sizing:border-box}
+#profileLoginCard{width:min(420px,100%);padding:30px;border-radius:24px;background:rgba(20,20,28,.96);border:1px solid rgba(255,255,255,.16);box-shadow:0 20px 70px rgba(0,0,0,.55);text-align:center;color:#fff}
+#profileLoginCard h2{margin:0 0 10px;font-size:28px}
+#profileLoginCard p{color:#bbb;margin:0 0 20px}
+#profileNameInput{width:100%;box-sizing:border-box;padding:14px 16px;border-radius:12px;border:1px solid #555;background:#111;color:#fff;font-size:18px;outline:none}
+#profileLoginButton{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;background:#fff;color:#111}
+#profileLoginError{min-height:20px;margin-top:10px;color:#ff7070;font-size:14px}
+#profileBar{position:fixed;top:12px;right:12px;z-index:9990;display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);color:#fff;font-size:14px}
+#profileBar button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer}
+</style>
+</head>
+
+<body>
+<div id="profileLoginOverlay">
+  <div id="profileLoginCard">
+    <h2>👤 ТВОЯТ ПРОФИЛ</h2>
+    <p>Избери име и влез в Saitama.</p>
+    <input id="profileNameInput" type="text" maxlength="30" autocomplete="nickname" placeholder="Напиши име...">
+    <button id="profileLoginButton" type="button">ВЛЕЗ В ПРОФИЛА</button>
+    <div id="profileLoginError"></div>
+  </div>
+</div>
+<div id="profileBar">👤 <span id="profileDisplayName"></span><button type="button" onclick="switchProfile()">СМЕНИ</button></div>
+
+
+
+
+
+<h1>BULGARIAN DICE</h1>
+
+<!-- BACKGROUND -->
+
+<div id="backgroundWrapper">
+
+    <div id="topActionButtons">
+
+        <button
+            id="backgroundButton"
+            onclick="toggleBackgroundMenu()">
+            🎨 СМЯНА НА ФОНА
+        </button>
+
+        <button
+            id="coinTopButton"
+            type="button"
+            onclick="toggleGameMode()">
+            🪙 СТОТИНКА
+        </button>
+
+        <button
+            id="statsTopButton"
+            type="button"
+            onclick="toggleStatistics()"
+            aria-label="Покажи статистиката">
+            ℹ️
+        </button>
+
+    </div>
+
+    <div id="backgroundMenu">
+
+        <button class="bgOption"
+                data-background="mountain"
+                onclick="changeBackground('mountain')">
+            🏔️<br>ПЛАНИНА
+        </button>
+
+        <button class="bgOption"
+                data-background="sea"
+                onclick="changeBackground('sea')">
+            🌊<br>МОРЕ
+        </button>
+
+        <button class="bgOption"
+                data-background="sky"
+                onclick="changeBackground('sky')">
+            ☁️<br>НЕБЕ
+        </button>
+
+        <button class="bgOption"
+                data-background="volcano"
+                onclick="changeBackground('volcano')">
+            🌋<br>ВУЛКАН
+        </button>
+
+        <button class="bgOption"
+                data-background="valley"
+                onclick="changeBackground('valley')">
+            🏞️<br>КОТЛОВИНА
+        </button>
+
+        <button class="bgOption"
+                data-background="moon"
+                onclick="changeBackground('moon')">
+            🌙<br>ЛУНА
+        </button>
+
+        <button class="bgOption"
+                data-background="sun"
+                onclick="changeBackground('sun')">
+            ☀️<br>СЛЪНЦЕ
+        </button>
+
+        <button class="bgOption"
+                data-background="solar"
+                onclick="changeBackground('solar')">
+            🪐<br>СЛЪНЧЕВА<br>СИСТЕМА
+        </button>
+
+        <button class="bgOption"
+                data-background="galaxy"
+                onclick="changeBackground('galaxy')">
+            🌌<br>ГАЛАКТИКА
+        </button>
+
+    </div>
+
+</div>
+
+
+
+<!-- F4 CONTROL PANEL -->
+<div id="colorEditorPanel">
+    <div id="colorEditorHeader">
+        <h2>🎨 ПАНЕЛ</h2>
+        <button type="button" onclick="toggleColorEditor()" style="border:0;border-radius:8px;padding:7px 10px;cursor:pointer;font-weight:bold;">✕</button>
+    </div>
+
+    <div class="editorBody">
+        <p class="f4SelectionHint">СЛОЖИ / МАХНИ за следващата врътка</p>
+        <div id="f4PossibleColors" aria-label="Цветове за следващата врътка"></div>
+        </div>
+</div>
+
+<!-- CONNECTION -->
+
+<div id="connectionBox">
+
+    <div id="connectionTitle">
+        🎮 ТВОЯТ КОД
+    </div>
+
+    <div id="connectionTransparencyControl" aria-label="Прозрачност и замъгляване">
+        <span>ЧИСТО</span>
+        <input id="connectionTransparencySlider" type="range" min="0" max="100" value="50" aria-label="Прозрачност и замъгляване">
+        <span>ЗАМЪГЛЕНО</span>
+    </div>
+
+    <div id="connectionRow">
+
+        <div id="roomCode">
+            ...
+        </div>
+
+        <button
+            id="newCodeButton"
+            onclick="createNewCode()">
+
+            НОВ КОД
+
+        </button>
+
+    </div>
+
+    <div
+        style="
+            text-align:center;
+            color:#aaa;
+            margin:10px 0;
+            font-size:13px;
+        ">
+
+        Натисни кода, за да го копираш. Дай го на приятел.
+
+    </div>
+
+    <div id="connectionRow">
+
+        <input
+            id="verifyInput"
+            maxlength="6"
+            autocomplete="off"
+            placeholder="ЧУЖД КОД">
+
+        <button
+            id="verifyButton"
+            onclick="verifyFriend()">
+
+            VERIFY
+
+        </button>
+
+    </div>
+
+    <div id="connectionMessage">
+        ⏳ Създава се твоят код...
+    </div>
+
+    <div id="connectionsList"></div>
+
+</div>
+
+<!-- STATISTICS -->
+<div id="statisticsModal" onclick="if(event.target===this) toggleStatistics(false)">
+    <div id="statisticsCard" role="dialog" aria-modal="true" aria-labelledby="statisticsTitle">
+        <div id="statisticsHeader">
+            <h2 id="statisticsTitle">📊 СТАТИСТИКА</h2>
+            <button id="statisticsClose" type="button" onclick="toggleStatistics(false)">✕</button>
+        </div>
+
+        <div id="statisticsSummary">
+            <div class="statBox">
+                <small>ОБЩО ХВЪРЛЯНИЯ</small>
+                <strong id="statsTotalRolls">0</strong>
+            </div>
+            <div class="statBox">
+                <small>ОБЩО ЗАРОВЕ</small>
+                <strong id="statsTotalDice">0</strong>
+            </div>
+        </div>
+
+        <div id="statisticsColors"></div>
+        <div id="mostCommonColor">Най-често срещан цвят: —</div>
+    </div>
+</div>
+
+
+
+<!-- WHEEL OF FORTUNE MODE -->
+
+
+<!-- COIN MODE -->
+<div id="coinMode">
+    <div id="coinModeTitle">🪙 СТОТИНКА</div>
+    <button id="coin" type="button" onclick="flipCoin()" aria-label="Хвърли стотинка">
+        <span class="coinSide coinSideFront">ЕЗИ</span>
+        <span class="coinSide coinSideBack">ТУРА</span>
+        <span id="coinResultOnCoin" class="coinResultOnCoin"></span>
+    </button>
+    <div id="coinResult">Натисни стотинката</div>
+    <button id="backToDiceButton" type="button" onclick="flipCoin()">ВЪРТИ</button>
+</div>
+
+<!-- DICE -->
+
+<div id="diceContainer">
+
+    <div class="dice"></div>
+    <div class="dice"></div>
+    <div class="dice"></div>
+    <div class="dice"></div>
+
+</div>
+
+
+<!-- ROLL -->
+
+<button
+    id="rollButton"
+    onclick="rollDice()">
+
+    ROLL DICE
+
+</button>
+
+
+<div id="modeStatus">
+    ТВОЯТА ИГРА
+</div>
+
+
+<!-- HISTORIES -->
+
+<div class="histories">
+
+    <!-- OWN -->
+
+    <div class="history">
+
+        <div class="historyTitle">
+            🎲 МОИТЕ ПОСЛЕДНИ 20 ВРЪТКИ
+        </div>
+
+        <div id="totalRollCounter" class="totalRollCounter">Общо завъртания: 0</div>
+
+        <div id="colorCounter" aria-label="Брояч на цветовете"></div>
+
+        <div id="streakRecords" aria-label="Рекорд за най-дълъг streak"></div>
+
+        <div id="historyList"></div>
+
+    </div>
+
+
+    <!-- FRIEND -->
+
+    <div class="history" id="friendHistoryPanel">
+
+        <div
+            class="historyTitle friendTitle"
+            id="friendHistoryTitle">
+
+            👤 ПРИЯТЕЛ
+
+        </div>
+
+        <div
+            id="friendHistoryList"
+            class="friendHistoryList">
+
+            <div class="emptyHistory">
+                VERIFY код на приятел,
+                за да видиш неговите врътки.
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- LEGEND -->
+
+<div id="colorText">
+
+    <span style="color:#FFD700;">ЖЪЛТО</span>
+    •
+    <span style="color:orange;">ОРАНЖЕВО</span>
+    •
+    <span style="color:#00FF00;">ЗЕЛЕНО</span>
+    •
+    <span style="color:red;">ЧЕРВЕНО</span>
+    •
+    <span style="color:#00BFFF;">СИНЬО</span>
+    •
+    <span style="color:#CC66FF;">ЛИЛАВО</span>
+
+</div>
+
+
+<script>
+
+
+/* =====================================================
+   GAME SOUNDS — generated locally with Web Audio
+===================================================== */
+let gameAudioContext = null;
+
+function getGameAudioContext(){
+    if(!gameAudioContext){
+        gameAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(gameAudioContext.state === "suspended") gameAudioContext.resume();
+    return gameAudioContext;
+}
+
+function playNoiseBurst(ctx, when, duration, volume, filterFreq){
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++){
+        const fade = Math.min(1, i/Math.max(1,data.length*0.08)) * Math.min(1, (data.length-i)/Math.max(1,data.length*0.22));
+        data[i] = (Math.random()*2-1) * fade;
+    }
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    filter.type = "bandpass";
+    filter.frequency.value = filterFreq;
+    filter.Q.value = 1.2;
+    gain.gain.setValueAtTime(volume, when);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+    source.connect(filter).connect(gain).connect(ctx.destination);
+    source.start(when);
+}
+
+function playDiceRollSound(){
+    const ctx = getGameAudioContext();
+    const now = ctx.currentTime;
+
+    // Нов звук: по-сухо и отчетливо разклащане на зарове,
+    // последвано от няколко бързи отскока и финално спиране.
+    const shaker = 0.95;
+
+    for(let i = 0; i < 16; i++){
+        const t = now + i * 0.048 + Math.random() * 0.025;
+        const dur = 0.018 + Math.random() * 0.035;
+
+        const buffer = ctx.createBuffer(
+            1,
+            Math.ceil(ctx.sampleRate * dur),
+            ctx.sampleRate
+        );
+        const data = buffer.getChannelData(0);
+
+        for(let j = 0; j < data.length; j++){
+            const x = j / data.length;
+            data[j] = (Math.random() * 2 - 1) * Math.pow(1 - x, 3);
+        }
+
+        const source = ctx.createBufferSource();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        source.buffer = buffer;
+        filter.type = "highpass";
+        filter.frequency.value = 1200 + Math.random() * 1800;
+
+        gain.gain.setValueAtTime((0.12 + Math.random() * 0.10) * shaker, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        source.connect(filter).connect(gain).connect(ctx.destination);
+        source.start(t);
+    }
+
+    // По-ясни "подскоци" на заровете.
+    [0.22,0.38,0.54,0.69,0.83,0.96].forEach((offset, i)=>{
+        const t = now + offset;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "square";
+        osc.frequency.setValueAtTime(175 + Math.random()*45, t);
+        osc.frequency.exponentialRampToValueAtTime(80, t + 0.055);
+
+        gain.gain.setValueAtTime((0.035 - i*0.003), t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
+
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.07);
+    });
+
+    // Финален отчетлив удар.
+    const finalTime = now + 1.12;
+    playNoiseBurst(ctx, finalTime, 0.055, 0.24, 3000);
+
+    const finalOsc = ctx.createOscillator();
+    const finalGain = ctx.createGain();
+
+    finalOsc.type = "triangle";
+    finalOsc.frequency.setValueAtTime(260, finalTime);
+    finalOsc.frequency.exponentialRampToValueAtTime(90, finalTime + 0.10);
+
+    finalGain.gain.setValueAtTime(0.065, finalTime);
+    finalGain.gain.exponentialRampToValueAtTime(0.001, finalTime + 0.12);
+
+    finalOsc.connect(finalGain).connect(ctx.destination);
+    finalOsc.start(finalTime);
+    finalOsc.stop(finalTime + 0.13);
+}
+
+function playCoinFlipSound(){
+    const ctx = getGameAudioContext();
+    const now = ctx.currentTime;
+    // Bright metallic spinning/flip sound with a final little clink.
+    for(let i=0;i<9;i++){
+        const t = now + i*0.075;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1150 + i*95, t);
+        osc.frequency.exponentialRampToValueAtTime(650 + i*35, t+0.075);
+        gain.gain.setValueAtTime(0.07, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t+0.075);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t+0.08);
+    }
+    const clink = ctx.createOscillator();
+    const clinkGain = ctx.createGain();
+    clink.type = "triangle";
+    clink.frequency.setValueAtTime(1450, now+0.68);
+    clink.frequency.exponentialRampToValueAtTime(900, now+0.98);
+    clinkGain.gain.setValueAtTime(0.16, now+0.68);
+    clinkGain.gain.exponentialRampToValueAtTime(0.001, now+0.98);
+    clink.connect(clinkGain).connect(ctx.destination);
+    clink.start(now+0.68);
+    clink.stop(now+1.0);
+}
+
+/* =====================================================
+   BACKGROUNDS
+===================================================== */
+
+const backgrounds = {
+
+    mountain:`
+        linear-gradient(
+            rgba(0,0,0,.30),
+            rgba(0,0,0,.65)
+        ),
+        linear-gradient(
+            160deg,
+            #6ec6ff 0%,
+            #d7f2ff 32%,
+            #5d8064 55%,
+            #14251b 100%
+        )
+    `,
+
+    sea:`
+        linear-gradient(
+            rgba(0,30,70,.15),
+            rgba(0,10,30,.65)
+        ),
+        linear-gradient(
+            180deg,
+            #27b9ff 0%,
+            #0077c8 38%,
+            #00436e 60%,
+            #001522 100%
+        )
+    `,
+
+    sky:`
+        linear-gradient(
+            rgba(255,255,255,.05),
+            rgba(30,80,150,.35)
+        ),
+        linear-gradient(
+            180deg,
+            #68c8ff 0%,
+            #b9e8ff 38%,
+            #e9f8ff 62%,
+            #72a8d0 100%
+        )
+    `,
+
+    volcano:`
+        radial-gradient(
+            ellipse at 50% 70%,
+            #ffb000 0%,
+            #ff3b00 12%,
+            transparent 30%
+        ),
+        linear-gradient(
+            160deg,
+            #090909 0%,
+            #25100b 45%,
+            #000000 100%
+        )
+    `,
+
+    valley:`
+        radial-gradient(
+            ellipse at 50% 55%,
+            rgba(80,180,100,.75),
+            transparent 35%
+        ),
+        linear-gradient(
+            180deg,
+            #6dc7ff 0%,
+            #b7e6ff 35%,
+            #537c4c 60%,
+            #132719 100%
+        )
+    `,
+
+    moon:`
+        radial-gradient(
+            circle at 68% 30%,
+            #ffffff 0%,
+            #e9e9e9 5%,
+            rgba(255,255,255,.15) 12%,
+            transparent 20%
+        ),
+        linear-gradient(
+            160deg,
+            #02030a,
+            #080d24 45%,
+            #141933 100%
+        )
+    `,
+
+    sun:`
+        radial-gradient(
+            circle at 50% 42%,
+            #fffbd0 0%,
+            #fff000 5%,
+            #ff9d00 13%,
+            rgba(255,70,0,.35) 28%,
+            transparent 45%
+        ),
+        linear-gradient(
+            180deg,
+            #53b9ff 0%,
+            #ffcf65 48%,
+            #f25c2a 100%
+        )
+    `,
+
+    solar:`
+        radial-gradient(
+            circle at 50% 50%,
+            #fff6a0 0%,
+            #ffb300 4%,
+            rgba(255,140,0,.35) 9%,
+            transparent 17%
+        ),
+        radial-gradient(
+            circle at 20% 25%,
+            #3b78ff 0%,
+            #15285e 2%,
+            transparent 5%
+        ),
+        radial-gradient(
+            circle at 75% 30%,
+            #d87b39 0%,
+            #542b22 2%,
+            transparent 5%
+        ),
+        linear-gradient(
+            135deg,
+            #02030b,
+            #050819,
+            #10051f
+        )
+    `,
+
+    galaxy:`
+        radial-gradient(
+            ellipse at 50% 50%,
+            rgba(255,255,255,.95) 0%,
+            rgba(150,180,255,.45) 3%,
+            rgba(100,80,255,.25) 10%,
+            transparent 30%
+        ),
+        radial-gradient(
+            ellipse at 25% 45%,
+            rgba(255,0,180,.30),
+            transparent 35%
+        ),
+        radial-gradient(
+            ellipse at 75% 55%,
+            rgba(0,180,255,.30),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #01010a,
+            #08001d 45%,
+            #16002b 100%
+        )
+    `
+};
+
+
+function toggleBackgroundMenu(){
+
+    document
+        .getElementById("backgroundMenu")
+        .classList.toggle("open");
+
+}
+
+
+function changeBackground(name){
+
+    if(!backgrounds[name]){
+        return;
+    }
+
+    document.body.style.background =
+        backgrounds[name];
+
+    localStorage.setItem(
+        "bulgarianDiceBackground",
+        name
+    );
+
+    document
+        .querySelectorAll(".bgOption")
+        .forEach(button=>{
+            button.classList.remove("active");
+        });
+
+    const button =
+        document.querySelector(
+            `.bgOption[data-background="${name}"]`
+        );
+
+    if(button){
+        button.classList.add("active");
+    }
+
+    document
+        .getElementById("backgroundMenu")
+        .classList.remove("open");
+}
+
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        const wrapper =
+            document.getElementById(
+                "backgroundWrapper"
+            );
+
+        if(!wrapper.contains(event.target)){
+
+            document
+                .getElementById("backgroundMenu")
+                .classList.remove("open");
+
+        }
+
+    }
+);
+
+
+const savedBackground =
+    localStorage.getItem(
+        "bulgarianDiceBackground"
+    );
+
+changeBackground(
+    backgrounds[savedBackground]
+        ? savedBackground
+        : "mountain"
+);
+
+
+/* =====================================================
+   COLORS
+===================================================== */
+
+const colors = [
+
+    "#00cc33",
+    "#0066ff",
+    "#ff0000",
+    "#a000ff",
+    "#ffd700",
+    "#ff8800"
+
+];
+
+// Цветовете, които са разрешени за следващата врътка.
+let nextRollColors = [...colors];
+
+
+const colorNames = {
+
+    "#00cc33":"ЗЕЛЕНО",
+    "#0066ff":"СИНЬО",
+    "#ff0000":"ЧЕРВЕНО",
+    "#a000ff":"ЛИЛАВО",
+    "#ffd700":"ЖЪЛТО",
+    "#ff8800":"ОРАНЖЕВО"
+
+};
+
+
+const colorClasses = {
+
+    "#00cc33":"green",
+    "#0066ff":"blue",
+    "#ff0000":"red",
+    "#a000ff":"purple",
+    "#ffd700":"yellow",
+    "#ff8800":"orange"
+
+};
+
+
+function getRandomColor(){
+
+    const available =
+        nextRollColors.length ? nextRollColors : colors;
+
+    const array =
+        new Uint32Array(1);
+
+    crypto.getRandomValues(array);
+
+    return available[
+        array[0] % available.length
+    ];
+
+}
+
+
+/* =====================================================
+   OWN HISTORY
+===================================================== */
+
+let history = [];
+
+const historyList =
+    document.getElementById(
+        "historyList"
+    );
+
+const colorCounter =
+    document.getElementById(
+        "colorCounter"
+    );
+
+const totalRollCounter =
+    document.getElementById(
+        "totalRollCounter"
+    );
+
+/* =====================================================
+   LIFETIME STATISTICS
+   Независими от последните 20 врътки.
+===================================================== */
+let totalRolls = Number(localStorage.getItem("bulgarianDiceTotalRolls") || 0);
+let lifetimeColorCounts = {};
+
+try{
+    lifetimeColorCounts = JSON.parse(
+        localStorage.getItem("bulgarianDiceColorCounts") || "{}"
+    );
+}catch(e){
+    lifetimeColorCounts = {};
+}
+
+colors.forEach(color=>{
+    if(!Number.isFinite(Number(lifetimeColorCounts[color]))){
+        lifetimeColorCounts[color] = 0;
+    }
+});
+
+let longestStreaks = {};
+let currentStreakColor = null;
+let currentStreakLength = 0;
+
+try{
+    longestStreaks = JSON.parse(
+        localStorage.getItem("bulgarianDiceLongestStreaks") || "{}"
+    );
+}catch(e){
+    longestStreaks = {};
+}
+
+colors.forEach(color=>{
+    if(!Number.isFinite(Number(longestStreaks[color]))){
+        longestStreaks[color] = 0;
+    }
+});
+
+function saveStatistics(){
+    localStorage.setItem("bulgarianDiceTotalRolls", String(totalRolls));
+    localStorage.setItem(
+        "bulgarianDiceColorCounts",
+        JSON.stringify(lifetimeColorCounts)
+    );
+    localStorage.setItem(
+        "bulgarianDiceLongestStreaks",
+        JSON.stringify(longestStreaks)
+    );
+}
+
+function renderStreakRecords(){
+    const box = document.getElementById("streakRecords");
+    if(!box) return;
+
+    box.innerHTML = colors.map(color => `
+        <span class="streakRecord" title="Най-дълъг streak на ${colorNames[color]}">
+            <span class="streakRecordDot ${colorClasses[color]}"
+                  style="background:${color};color:${color};"></span>
+            ${colorNames[color]}:
+            <span class="streakRecordValue">${Number(longestStreaks[color] || 0)}</span>
+        </span>
+    `).join("");
+}
+
+function updateStreaks(roll){
+    // Streak = последователни еднакви цветове през всички хвърлени зарове.
+    roll.forEach(color=>{
+        if(color === currentStreakColor){
+            currentStreakLength++;
+        }else{
+            currentStreakColor = color;
+            currentStreakLength = 1;
+        }
+
+        if(currentStreakLength > Number(longestStreaks[color] || 0)){
+            longestStreaks[color] = currentStreakLength;
+        }
+    });
+}
+
+function renderStatistics(){
+    const totalDice = Object.values(lifetimeColorCounts)
+        .reduce((sum,value)=>sum + Number(value || 0), 0);
+
+    const totalEl = document.getElementById("statsTotalRolls");
+    const diceEl = document.getElementById("statsTotalDice");
+    const colorsEl = document.getElementById("statisticsColors");
+    const mostEl = document.getElementById("mostCommonColor");
+
+    if(totalEl) totalEl.textContent = totalRolls;
+    if(diceEl) diceEl.textContent = totalDice;
+
+    if(!colorsEl) return;
+
+    colorsEl.innerHTML = colors.map(color=>{
+        const count = Number(lifetimeColorCounts[color] || 0);
+        const percent = totalDice ? (count / totalDice) * 100 : 0;
+        return `
+            <div class="statColorRow">
+                <div class="statColorName">${colorNames[color]}</div>
+                <div class="statBar">
+                    <div class="statBarFill"
+                         style="width:${percent.toFixed(2)}%;background:${color};box-shadow:0 0 10px ${color};"></div>
+                </div>
+                <div class="statPercent">${percent.toFixed(1)}%</div>
+            </div>
+        `;
+    }).join("");
+
+    if(!totalDice){
+        mostEl.textContent = "Най-често срещан цвят: —";
+        return;
+    }
+
+    const maxCount = Math.max(...colors.map(color=>Number(lifetimeColorCounts[color] || 0)));
+    const leaders = colors
+        .filter(color=>Number(lifetimeColorCounts[color] || 0) === maxCount)
+        .map(color=>colorNames[color]);
+
+    mostEl.textContent =
+        "🏆 Най-често срещан цвят: " +
+        leaders.join(" / ") +
+        " (" + maxCount + " пъти)";
+}
+
+function toggleStatistics(force){
+    const modal = document.getElementById("statisticsModal");
+    if(!modal) return;
+
+    const shouldOpen =
+        typeof force === "boolean"
+            ? force
+            : !modal.classList.contains("open");
+
+    modal.classList.toggle("open", shouldOpen);
+
+    if(shouldOpen){
+        renderStatistics();
+    }
+}
+
+document.addEventListener("keydown", event=>{
+    if(event.key === "Escape"){
+        toggleStatistics(false);
+    }
+});
+
+
+function renderColorCounter(){
+
+    renderStreakRecords();
+
+    if(totalRollCounter){
+        totalRollCounter.textContent = `Общо завъртания: ${totalRolls}`;
+    }
+
+    const counts = {};
+
+    colors.forEach(color => {
+        counts[color] = 0;
+    });
+
+    history.forEach(roll => {
+        roll.forEach(color => {
+            if (counts[color] !== undefined){
+                counts[color]++;
+            }
+        });
+    });
+
+    colorCounter.innerHTML = colors.map(color => `
+        <span class="colorCount">
+            <span
+                class="colorCountDot ${colorClasses[color]}"
+                style="background:${color};color:${color};"
+            ></span>
+            ${colorNames[color]} ${counts[color]}
+        </span>
+    `).join("");
+}
+
+
+function renderHistory(){
+
+    renderColorCounter();
+
+    historyList.innerHTML = "";
+
+    if(history.length === 0){
+
+        historyList.innerHTML = `
+            <div class="emptyHistory">
+                Все още няма врътки.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    history
+        .forEach(
+        (roll,index)=>{
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+            row.className =
+                "historyRow";
+
+
+            const number =
+                document.createElement(
+                    "div"
+                );
+
+            number.className =
+                "rollNumber";
+
+            number.textContent =
+                "#" +
+                (index + 1);
+
+            row.appendChild(number);
+
+
+            roll.forEach(color=>{
+
+                const die =
+                    document.createElement(
+                        "div"
+                    );
+
+                die.className =
+                    "historyDice " +
+                    colorClasses[color];
+
+                die.title =
+                    colorNames[color];
+
+                row.appendChild(die);
+
+            });
+
+
+            historyList.appendChild(row);
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   FRIEND HISTORY
+===================================================== */
+
+let friendHistory = [];
+
+let friendCode = "";
+
+
+const friendHistoryList =
+    document.getElementById(
+        "friendHistoryList"
+    );
+
+
+function renderFriendHistory(){
+
+    friendHistoryList.innerHTML = "";
+
+
+    if(!friendCode){
+
+        friendHistoryList.innerHTML = `
+            <div class="emptyHistory">
+                VERIFY код на приятел,
+                за да видиш неговите врътки.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    if(friendHistory.length === 0){
+
+        friendHistoryList.innerHTML = `
+            <div class="emptyHistory">
+                Приятелят още няма врътки.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    friendHistory.forEach(
+        (roll,index)=>{
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+            row.className =
+                "historyRow";
+
+
+            const number =
+                document.createElement(
+                    "div"
+                );
+
+            number.className =
+                "rollNumber";
+
+            number.textContent =
+                "#" +
+                (
+                    friendHistory.length -
+                    index
+                );
+
+            row.appendChild(number);
+
+
+            roll.forEach(color=>{
+
+                const die =
+                    document.createElement(
+                        "div"
+                    );
+
+                die.className =
+                    "historyDice " +
+                    colorClasses[color];
+
+                die.title =
+                    colorNames[color];
+
+                row.appendChild(die);
+
+            });
+
+
+            friendHistoryList.appendChild(row);
+
+        }
+    );
+
+}
+
+
+function setFriend(code){
+
+    friendCode = code;
+    document.getElementById("friendHistoryPanel").classList.add("visible");
+
+    document
+        .getElementById(
+            "friendHistoryTitle"
+        )
+        .textContent =
+            "👤 ПРИЯТЕЛ • " + code;
+
+    renderFriendHistory();
+
+}
+
+
+/* =====================================================
+   DICE
+===================================================== */
+
+const dice =
+    document.querySelectorAll(
+        ".dice"
+    );
+
+
+function showDice(colorsArray){
+
+    colorsArray.forEach(
+        (color,index)=>{
+
+            if(dice[index]){
+
+                dice[index].style.background =
+                    color;
+
+            }
+
+        }
+    );
+
+}
+
+
+function animateDice(colorsArray){
+
+    dice.forEach(
+        (die,index)=>{
+
+            const finalColor =
+                colorsArray[index];
+
+            die.style.background =
+                "#777";
+
+            die.animate(
+
+                [
+                    {
+                        transform:
+                            "rotate(0deg)"
+                    },
+
+                    {
+                        transform:
+                            "rotate(-720deg)"
+                    }
+                ],
+
+                {
+                    duration:1000,
+                    easing:"linear"
+                }
+
+            );
+
+            setTimeout(()=>{
+
+                die.style.background =
+                    finalColor;
+
+            },1000);
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   PEERJS
+===================================================== */
+
+let peer = null;
+
+let myCode = "";
+
+let connections = new Map();
+
+
+/*
+    Всеки браузър има собствен Peer ID.
+
+    Този ID е и кодът, който
+    даваш на приятелите си.
+*/
+
+const codeCharacters =
+    "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+
+function generateRoomCode(){
+
+    let result = "";
+
+    const random =
+        new Uint32Array(6);
+
+    crypto.getRandomValues(random);
+
+    for(let i=0;i<6;i++){
+
+        result +=
+            codeCharacters[
+                random[i] %
+                codeCharacters.length
+            ];
+
+    }
+
+    return result;
+
+}
+
+
+/* =====================================================
+   UI
+===================================================== */
+
+function setMessage(
+    text,
+    type="info"
+){
+
+    const message =
+        document.getElementById(
+            "connectionMessage"
+        );
+
+    message.textContent =
+        text;
+
+    message.className =
+        type;
+
+}
+
+
+function setModeStatus(text){
+
+    document
+        .getElementById(
+            "modeStatus"
+        )
+        .textContent =
+            text;
+
+}
+
+
+/* =====================================================
+   CREATE MY CODE
+===================================================== */
+
+function createNewCode(){
+
+    if(peer){
+
+        try{
+            peer.destroy();
+        }
+        catch(e){}
+
+    }
+
+    connections.clear();
+
+    renderConnections();
+
+    friendCode = "";
+
+    friendHistory = [];
+    document.getElementById("friendHistoryPanel").classList.remove("visible");
+
+    document
+        .getElementById(
+            "friendHistoryTitle"
+        )
+        .textContent =
+            "👤 ПРИЯТЕЛ";
+
+    renderFriendHistory();
+
+    createPeer();
+
+}
+
+
+function createPeer(){
+
+    myCode =
+        generateRoomCode();
+
+    document
+        .getElementById(
+            "roomCode"
+        )
+        .textContent =
+            myCode;
+
+
+    setMessage(
+        "⏳ Създава се твоят код...",
+        "info"
+    );
+
+
+    setModeStatus(
+        "ТВОЯТ КОД: " + myCode
+    );
+
+
+    peer =
+        new Peer(
+            myCode,
+            {
+                debug:0
+            }
+        );
+
+
+    peer.on(
+        "open",
+        id=>{
+
+            myCode = id;
+
+            document
+                .getElementById(
+                    "roomCode"
+                )
+                .textContent =
+                    id;
+
+            setMessage(
+                "✓ Готово! Това е твоят код. Дай го на приятели.",
+                "success"
+            );
+
+            setModeStatus(
+                "ONLINE • ТВОЯТ КОД: " + id
+            );
+
+        }
+    );
+
+
+    /*
+       Някой друг се свързва с нас.
+    */
+
+    peer.on(
+        "connection",
+        conn=>{
+
+            setupConnection(conn);
+
+        }
+    );
+
+
+    peer.on(
+        "error",
+        error=>{
+
+            console.error(
+                "Peer error:",
+                error
+            );
+
+
+            /*
+               Ако случайно кодът е зает,
+               автоматично правим нов.
+            */
+
+            if(
+                error.type ===
+                "unavailable-id"
+            ){
+
+                setMessage(
+                    "Кодът е зает. Генерирам нов...",
+                    "error"
+                );
+
+                setTimeout(
+                    createPeer,
+                    500
+                );
+
+                return;
+            }
+
+
+            setMessage(
+                "Грешка: " +
+                error.type,
+                "error"
+            );
+
+        }
+    );
+
+
+    peer.on(
+        "disconnected",
+        ()=>{
+
+            setMessage(
+                "⚠ Връзката със сървъра е прекъсната.",
+                "error"
+            );
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   VERIFY FRIEND
+===================================================== */
+
+function verifyFriend(){
+
+    const input =
+        document
+            .getElementById(
+                "verifyInput"
+            )
+            .value
+            .trim()
+            .toUpperCase();
+
+
+    if(input.length !== 6){
+
+        setMessage(
+            "✕ Кодът трябва да е 6 символа.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if(input === myCode){
+
+        setMessage(
+            "✕ Не можеш да VERIFY-неш собствения си код.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if(
+        !peer ||
+        peer.destroyed
+    ){
+
+        setMessage(
+            "⏳ Твоят код още не е готов.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    /*
+       Ако вече има връзка,
+       просто я показваме.
+    */
+
+    if(connections.has(input)){
+
+        const existing =
+            connections.get(input);
+
+        if(
+            existing &&
+            existing.open
+        ){
+
+            setFriend(input);
+
+            setMessage(
+                "✓ Вече си свързан с " + input,
+                "success"
+            );
+
+            sendHello(existing);
+
+            return;
+        }
+
+    }
+
+
+    setMessage(
+        "⏳ VERIFY " + input + "...",
+        "info"
+    );
+
+
+    const conn =
+        peer.connect(
+            input,
+            {
+                reliable:true
+            }
+        );
+
+
+    setupConnection(conn);
+
+}
+
+
+/* =====================================================
+   SETUP CONNECTION
+===================================================== */
+
+function setupConnection(conn){
+
+    if(!conn){
+        return;
+    }
+
+
+    const remoteCode =
+        conn.peer;
+
+
+    /*
+       Не допускаме два еднакви
+       connection-а към един код.
+    */
+
+    if(
+        connections.has(remoteCode)
+    ){
+
+        const old =
+            connections.get(remoteCode);
+
+        if(
+            old &&
+            old.open
+        ){
+
+            try{
+                conn.close();
+            }
+            catch(e){}
+
+            return;
+        }
+
+    }
+
+
+    connections.set(
+        remoteCode,
+        conn
+    );
+
+
+    renderConnections();
+
+
+    conn.on(
+        "open",
+        ()=>{
+
+            setMessage(
+                "✓ VERIFY успешен: " +
+                remoteCode,
+                "success"
+            );
+
+
+            setModeStatus(
+                "ONLINE • " +
+                connections.size +
+                " СВЪРЗАНИ"
+            );
+
+
+            /*
+               Изпращаме нашата история
+               на приятеля.
+            */
+
+            sendHello(conn);
+
+
+            renderConnections();
+
+        }
+    );
+
+
+    conn.on(
+        "data",
+        data=>{
+
+            handleNetworkData(
+                data,
+                remoteCode
+            );
+
+        }
+    );
+
+
+    conn.on(
+        "close",
+        ()=>{
+
+            connections.delete(
+                remoteCode
+            );
+
+
+            if(
+                friendCode === remoteCode
+            ){
+
+                friendCode = "";
+
+                friendHistory = [];
+                document.getElementById("friendHistoryPanel").classList.remove("visible");
+
+                document
+                    .getElementById(
+                        "friendHistoryTitle"
+                    )
+                    .textContent =
+                        "👤 ПРИЯТЕЛ";
+
+                renderFriendHistory();
+
+            }
+
+
+            renderConnections();
+
+
+            setModeStatus(
+                connections.size > 0
+                    ? "ONLINE • " +
+                      connections.size +
+                      " СВЪРЗАНИ"
+                    : "ONLINE • НЯМА СВЪРЗАНИ"
+            );
+
+        }
+    );
+
+
+    conn.on(
+        "error",
+        error=>{
+
+            console.error(
+                "Connection error:",
+                error
+            );
+
+            connections.delete(
+                remoteCode
+            );
+
+            renderConnections();
+
+
+            setMessage(
+                "✕ Неуспешен VERIFY на " +
+                remoteCode,
+                "error"
+            );
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   SEND HELLO / HISTORY
+===================================================== */
+
+function sendHello(conn){
+
+    if(
+        !conn ||
+        !conn.open
+    ){
+        return;
+    }
+
+
+    try{
+
+        conn.send({
+
+            type:"hello",
+
+            code:myCode,
+
+            history:history,
+
+            dice:
+                Array.from(
+                    dice
+                ).map(
+                    die =>
+                        rgbToHex(
+                            getComputedStyle(
+                                die
+                            ).backgroundColor
+                        )
+                )
+
+        });
+
+    }
+    catch(error){
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   NETWORK DATA
+===================================================== */
+
+function handleNetworkData(
+    data,
+    remoteCode
+){
+
+    if(
+        !data ||
+        !data.type
+    ){
+        return;
+    }
+
+
+    /*
+       FRIEND HELLO
+
+       Това получаваме веднага след
+       VERIFY.
+
+       Тук е неговата история.
+    */
+
+    if(
+        data.type ===
+        "hello"
+    ){
+
+        if(
+            Array.isArray(
+                data.history
+            )
+        ){
+
+            friendHistory =
+                data.history
+                    .slice(0,20);
+
+            setFriend(
+                remoteCode
+            );
+
+            renderFriendHistory();
+
+        }
+
+
+        /*
+           Ако искаме да покажем
+           текущите му зарове, може
+           да ги използваме и тук.
+        */
+
+        if(
+            Array.isArray(
+                data.dice
+            )
+        ){
+
+            /*
+               Не сменяме нашите зарове.
+               Те са си наши.
+            */
+
+        }
+
+
+        return;
+    }
+
+
+    /*
+       FRIEND ROLL
+    */
+
+    if(
+        data.type ===
+        "roll"
+    ){
+
+        if(
+            Array.isArray(
+                data.history
+            )
+        ){
+
+            friendHistory =
+                data.history
+                    .slice(0,20);
+
+            setFriend(
+                remoteCode
+            );
+
+            renderFriendHistory();
+
+        }
+
+
+        /*
+           Ако това е текущият приятел,
+           показваме анимацията на неговите
+           зарове.
+        */
+
+        if(
+            Array.isArray(
+                data.colors
+            ) &&
+            friendCode === remoteCode
+        ){
+
+            animateFriendRoll(
+                data.colors
+            );
+
+        }
+
+
+        return;
+    }
+
+}
+
+
+/* =====================================================
+   FRIEND ROLL VISUAL
+===================================================== */
+
+function animateFriendRoll(colorsArray){
+
+    /*
+       За да не заменяме твоите зарове,
+       само правим кратък визуален ефект
+       върху FRIEND history title.
+    */
+
+    const title =
+        document.getElementById(
+            "friendHistoryTitle"
+        );
+
+
+    title.classList.remove(
+        "shake"
+    );
+
+
+    void title.offsetWidth;
+
+
+    title.classList.add(
+        "shake"
+    );
+
+}
+
+
+/* =====================================================
+   SEND TO ALL
+===================================================== */
+
+function sendToAll(data){
+
+    connections.forEach(
+        (conn,code)=>{
+
+            if(
+                conn &&
+                conn.open
+            ){
+
+                try{
+
+                    conn.send(data);
+
+                }
+                catch(error){
+
+                    console.error(
+                        "Send error:",
+                        code,
+                        error
+                    );
+
+                }
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   ROLL DICE
+===================================================== */
+
+function rollDice(){
+
+    playDiceRollSound();
+
+    const button =
+        document.getElementById(
+            "rollButton"
+        );
+
+
+    if(button.disabled){
+        return;
+    }
+
+
+    button.disabled = true;
+
+
+    const currentRoll = [];
+
+
+    for(
+        let i=0;
+        i<4;
+        i++
+    ){
+
+        currentRoll.push(
+            getRandomColor()
+        );
+
+    }
+
+
+    /*
+       Показваме нашата врътка.
+    */
+
+    animateDice(
+        currentRoll
+    );
+
+
+    /*
+       Добавяме в историята веднага след като
+       горните цветове се покажат (след анимацията).
+    */
+
+    setTimeout(
+        ()=>{
+
+            history.unshift(
+                currentRoll
+            );
+
+            // Lifetime statistics: броим всеки от 4-те зара.
+            totalRolls++;
+
+            currentRoll.forEach(color=>{
+                lifetimeColorCounts[color] =
+                    Number(lifetimeColorCounts[color] || 0) + 1;
+            });
+
+            updateStreaks(currentRoll);
+
+            saveStatistics();
+
+            if(history.length > 20){
+
+                history =
+                    history.slice(
+                        0,
+                        20
+                    );
+
+            }
+
+            renderHistory();
+
+            /*
+               Изпращаме нашата врътка
+               на ВСИЧКИ VERIFY-нати хора.
+            */
+
+            sendToAll({
+
+                type:"roll",
+
+                from:myCode,
+
+                colors:
+                    currentRoll,
+
+                history:
+                    history
+
+            });
+
+        },
+        1000
+    );
+
+
+    setTimeout(
+        ()=>{
+
+            button.disabled =
+                false;
+
+        },
+        1000
+    );
+
+}
+
+
+/* =====================================================
+   CONNECTION LIST
+===================================================== */
+
+function renderConnections(){
+
+    const container =
+        document.getElementById(
+            "connectionsList"
+        );
+
+
+    container.innerHTML = "";
+
+
+    if(
+        connections.size === 0
+    ){
+
+        return;
+    }
+
+
+    connections.forEach(
+        (conn,code)=>{
+
+            const item =
+                document.createElement(
+                    "div"
+                );
+
+            item.className =
+                "connectionItem";
+
+
+            const left =
+                document.createElement(
+                    "div"
+                );
+
+            left.innerHTML =
+                `
+                    👤
+                    <span class="connectionCode">
+                        ${code}
+                    </span>
+                `;
+
+
+            const right =
+                document.createElement(
+                    "div"
+                );
+
+            right.className =
+                "connectionOnline";
+
+            right.textContent =
+                conn.open
+                    ? "● ONLINE"
+                    : "○ CONNECTING";
+
+
+            item.appendChild(left);
+
+            item.appendChild(right);
+
+            container.appendChild(item);
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   RGB -> HEX
+===================================================== */
+
+function rgbToHex(rgb){
+
+    if(
+        !rgb ||
+        rgb.startsWith("#")
+    ){
+
+        return rgb;
+
+    }
+
+
+    const values =
+        rgb.match(
+            /\d+/g
+        );
+
+
+    if(
+        !values ||
+        values.length < 3
+    ){
+
+        return "#777777";
+
+    }
+
+
+    return "#" +
+        values
+            .slice(0,3)
+            .map(
+                x =>
+                    Number(x)
+                        .toString(16)
+                        .padStart(2,"0")
+            )
+            .join("");
+
+}
+
+
+/* =====================================================
+   VERIFY ENTER
+===================================================== */
+
+document
+    .getElementById(
+        "verifyInput"
+    )
+    .addEventListener(
+        "keydown",
+        function(event){
+
+            if(
+                event.key === "Enter"
+            ){
+
+                verifyFriend();
+
+            }
+
+        }
+    );
+
+
+/* =====================================================
+   COPY CODE
+===================================================== */
+
+document
+    .getElementById(
+        "roomCode"
+    )
+    .addEventListener(
+        "click",
+        async function(){
+
+            if(!myCode){
+                return;
+            }
+
+
+            try{
+
+                await navigator
+                    .clipboard
+                    .writeText(
+                        myCode
+                    );
+
+                setMessage(
+                    "✓ Твоят код е копиран.",
+                    "success"
+                );
+
+            }
+            catch(error){
+
+                setMessage(
+                    "Код: " + myCode,
+                    "info"
+                );
+
+            }
+
+        }
+    );
+
+
+
+
+/* =====================================================
+   COIN MODE
+===================================================== */
+function toggleGameMode(){
+    const coinMode=document.getElementById("coinMode");
+    const dice=document.getElementById("diceContainer");
+    const roll=document.getElementById("rollButton");
+    const status=document.getElementById("modeStatus");
+    const histories=document.querySelector(".histories");
+    const coinOpen=!coinMode.classList.contains("active");
+
+    coinMode.classList.toggle("active",coinOpen);
+
+    const coinTopButton = document.getElementById("coinTopButton");
+    if(coinTopButton){
+        coinTopButton.textContent = coinOpen ? "🎲 ЗАРОВЕ" : "🪙 СТОТИНКА";
+    }
+
+    dice.style.display=coinOpen?"none":"flex";
+    roll.style.display=coinOpen?"none":"block";
+    status.style.display=coinOpen?"none":"block";
+    if(histories) histories.style.display=coinOpen?"none":"flex";
+
+    const panel=document.getElementById("colorEditorPanel");
+    if(panel && coinOpen) panel.classList.remove("open");
+}
+
+function flipCoin(){
+
+    playCoinFlipSound();
+
+    const coin = document.getElementById("coin");
+
+    if(!coin){
+        return;
+    }
+
+    // One random bit => EZI 50%, TURA 50%.
+    const randomByte = new Uint8Array(1);
+    crypto.getRandomValues(randomByte);
+
+    const resultIsEzi = (randomByte[0] & 1) === 0;
+
+    coin.classList.remove("flipping");
+
+    // Start every flip from a neutral position.
+    coin.style.transform = "rotateY(0deg)";
+    void coin.offsetWidth;
+
+    coin.classList.add("flipping");
+
+    // End on the randomly selected physical side.
+    setTimeout(() => {
+
+        coin.classList.remove("flipping");
+
+        coin.style.transform =
+            resultIsEzi
+                ? "rotateY(0deg)"
+                : "rotateY(180deg)";
+
+    }, 700);
+}
+
+/* =====================================================
+   F4 CONTROL PANEL
+===================================================== */
+function renderF4Colors(){
+
+    const container =
+        document.getElementById("f4PossibleColors");
+
+    container.innerHTML = "";
+
+    colors.forEach(color => {
+
+        const option = document.createElement("div");
+        option.className = "f4ColorOption";
+        option.dataset.color = color;
+
+        const square = document.createElement("span");
+        square.className = "f4PossibleColor " + colorClasses[color];
+        square.title = colorNames[color];
+
+        const label = document.createElement("div");
+        label.textContent = colorNames[color];
+        label.style.fontWeight = "bold";
+        label.style.fontSize = "11px";
+        label.style.color = "#ddd";
+
+        const buttons = document.createElement("div");
+        buttons.className = "f4ColorButtons";
+
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "f4ColorButton f4AddColor";
+        add.textContent = "СЛОЖИ";
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "f4ColorButton f4RemoveColor";
+        remove.textContent = "МАХНИ";
+
+        add.addEventListener("click", () => {
+            if(!nextRollColors.includes(color)){
+                nextRollColors.push(color);
+            }
+            renderF4Colors();
+        });
+
+        remove.addEventListener("click", () => {
+            if(nextRollColors.length <= 1 && nextRollColors.includes(color)){
+                return;
+            }
+            nextRollColors = nextRollColors.filter(c => c !== color);
+            renderF4Colors();
+        });
+
+        buttons.appendChild(add);
+        buttons.appendChild(remove);
+        option.appendChild(square);
+        option.appendChild(label);
+        option.appendChild(buttons);
+        container.appendChild(option);
+    });
+
+    container.querySelectorAll(".f4ColorOption").forEach(option => {
+        const color = option.dataset.color;
+        const enabled = nextRollColors.includes(color);
+        option.classList.toggle("disabled", !enabled);
+        option.querySelector(".f4AddColor").disabled = enabled;
+        option.querySelector(".f4RemoveColor").disabled = !enabled || nextRollColors.length <= 1;
+    });
+}
+
+function toggleColorEditor(){
+    const panel = document.getElementById("colorEditorPanel");
+    const open = !panel.classList.contains("open");
+    panel.classList.toggle("open", open);
+    if(open){
+        renderF4Colors();
+    }
+}
+
+document.addEventListener("keydown", event=>{
+    if(event.key === "F4"){
+        event.preventDefault();
+        toggleColorEditor();
+    }
+});
+
+// Drag the panel by its header.
+(function(){
+    const panel = document.getElementById("colorEditorPanel");
+    const header = document.getElementById("colorEditorHeader");
+    let dragging=false, offsetX=0, offsetY=0;
+
+    header.addEventListener("pointerdown", e=>{
+        dragging=true;
+        const r=panel.getBoundingClientRect();
+        offsetX=e.clientX-r.left;
+        offsetY=e.clientY-r.top;
+        panel.style.left=r.left+"px";
+        panel.style.top=r.top+"px";
+        panel.style.transform="none";
+        header.setPointerCapture(e.pointerId);
+    });
+    header.addEventListener("pointermove", e=>{
+        if(!dragging) return;
+        panel.style.left=(e.clientX-offsetX)+"px";
+        panel.style.top=(e.clientY-offsetY)+"px";
+    });
+    header.addEventListener("pointerup", ()=>dragging=false);
+    header.addEventListener("pointercancel", ()=>dragging=false);
+})();
+
+renderF4Colors();
+
+/* =====================================================
+   START
+===================================================== */
+
+renderHistory();
+
+renderFriendHistory();
+
+createPeer();
+
+
+</script>
+
+
+<script>
+function toggleWheelMode(){
+    const wheelMode = document.getElementById("wheelMode");
+    const dice = document.getElementById("diceContainer");
+    const roll = document.getElementById("rollButton");
+    const status = document.getElementById("modeStatus");
+    const histories = document.querySelector(".histories");
+
+    if(!wheelMode) return;
+
+    const wheelOpen = !wheelMode.classList.contains("active");
+
+    wheelMode.classList.toggle("active", wheelOpen);
+
+    if(dice) dice.style.display = wheelOpen ? "none" : "flex";
+    if(roll) roll.style.display = wheelOpen ? "none" : "block";
+    if(status) status.style.display = wheelOpen ? "none" : "block";
+    if(histories) histories.style.display = wheelOpen ? "none" : "flex";
+
+    const coinMode = document.getElementById("coinMode");
+    if(coinMode && wheelOpen) coinMode.classList.remove("active");
+}
+</script>
+
+
+<script>
+const musicNames = [
+    "Golden Brown",
+    "Follow You",
+    "Static",
+    "Criminal",
+    "Old Town Road"
+];
+let selectedMusic = 0;
+let musicObjectUrl = null;
+
+function toggleMusicPanel(){
+    const panel = document.getElementById("musicPanel");
+    panel.classList.toggle("open");
+}
+
+function selectMusic(index){
+    selectedMusic = index;
+    document.querySelectorAll(".musicSong").forEach((b,i)=>{
+        b.classList.toggle("active", i === index);
+    });
+
+    const audio = document.getElementById("musicAudio");
+    if(musicObjectUrl){
+        audio.pause();
+        audio.currentTime = 0;
+    }
+
+    document.getElementById("musicStatus").textContent =
+        "Избрана: " + musicNames[index] + " — избери нейния аудио файл.";
+    document.getElementById("musicFile").value = "";
+}
+
+function loadMusicFile(event){
+    const file = event.target.files && event.target.files[0];
+    if(!file) return;
+
+    const audio = document.getElementById("musicAudio");
+    if(musicObjectUrl) URL.revokeObjectURL(musicObjectUrl);
+    musicObjectUrl = URL.createObjectURL(file);
+    audio.src = musicObjectUrl;
+
+    document.getElementById("musicStatus").textContent =
+        musicNames[selectedMusic] + " • " + file.name;
+
+    audio.play().catch(()=>{});
+}
+
+
+
+</script>
+
+
+
+
+
+
+<script>
+const embeddedSongs=[{"name": "Розовите очила", "artist": "Преслава", "video": "https://www.youtube.com/watch?v=2Gj7RPhPYZc"}, {"name": "Хващаме бас", "artist": "Преслава x Галена", "video": "https://www.youtube.com/watch?v=O8ANGq7qT-Q"}, {"name": "Кой бе, кой", "artist": "Преслава x Азис", "video": "https://www.youtube.com/watch?v=O8ANGq7qT-Q"}, {"name": "Живей", "artist": "Преслава x Галена", "video": "https://www.youtube.com/watch?v=O8ANGq7qT-Q"}, {"name": "Право в очите", "artist": "Преслава", "video": "https://www.youtube.com/watch?v=2Gj7RPhPYZc"}];
+let currentEmbedded=0;
+function playEmbeddedSong(i){
+ currentEmbedded=i;
+ const s=embeddedSongs[i];
+ document.querySelectorAll(".musicSong").forEach((b,n)=>b.classList.toggle("active",n===i));
+ document.getElementById("musicStatus").textContent="▶️ "+s.name;
+ document.getElementById("musicArtist").textContent=s.artist;
+ document.getElementById("musicEmbed").style.display="block";
+ document.getElementById("musicFrame").src="https://www.youtube.com/embed/"+s.video+"?autoplay=1&rel=0";
+}
+function playCurrentEmbedded(){
+ playEmbeddedSong(currentEmbedded);
+}
+function stopEmbedded(){
+ document.getElementById("musicFrame").src="";
+ document.getElementById("musicEmbed").style.display="none";
+ document.getElementById("musicStatus").textContent="⏹️ Спряна";
+}
+
+
+// Connection panel transparency / blur control
+(function(){
+    const box = document.getElementById('connectionBox');
+    const slider = document.getElementById('connectionTransparencySlider');
+    if(!box || !slider) return;
+
+    function updateConnectionEffect(){
+        const value = Number(slider.value);
+        // Left = clean transparent, right = more blurred / softly opaque.
+        const blur = Math.round(value * 0.20);
+        const alpha = 0.04 + (value / 100) * 0.22;
+        box.style.setProperty('--connection-blur', blur + 'px');
+        box.style.setProperty('--connection-alpha', alpha.toFixed(3));
+    }
+
+    slider.addEventListener('input', updateConnectionEffect);
+    updateConnectionEffect();
+})();
+</script>
+
+<script>
+(function(){
+  const KEY='saitamaProfileName';
+  const overlay=document.getElementById('profileLoginOverlay');
+  const input=document.getElementById('profileNameInput');
+  const error=document.getElementById('profileLoginError');
+  const display=document.getElementById('profileDisplayName');
+  function setProfile(name){
+    name=name.trim();
+    if(!name){ error.textContent='Моля, въведи име.'; return; }
+    localStorage.setItem(KEY,name);
+    display.textContent=name;
+    overlay.style.display='none';
+    document.body.dataset.profile=name;
+  }
+  window.switchProfile=function(){
+    input.value=localStorage.getItem(KEY)||'';
+    error.textContent='';
+    overlay.style.display='flex';
+    setTimeout(()=>input.focus(),50);
+  };
+  document.getElementById('profileLoginButton').addEventListener('click',()=>setProfile(input.value));
+  input.addEventListener('keydown',e=>{if(e.key==='Enter') setProfile(input.value);});
+  const saved=localStorage.getItem(KEY);
+  if(saved){ display.textContent=saved; overlay.style.display='none'; document.body.dataset.profile=saved; }
+  else { overlay.style.display='flex'; setTimeout(()=>input.focus(),100); }
+})();
+</script>
+</body>
+</html>
